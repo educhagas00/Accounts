@@ -31,7 +31,7 @@ function operation () {
         if(action === 'Criar Conta') { createAccount() } else 
         if(action === 'Depositar') { deposit() } else
         if(action === 'Consultar Saldo') { getBalance() } else
-        //if(action === 'Sacar') {  } else
+        if(action === 'Sacar') { withdraw() } else
         if(action === 'Sair') { 
 
             console.log(chalk.bgBlue.black('Obrigado por usar o Accounts!')) 
@@ -142,14 +142,6 @@ function addAmount(accountName, amount) {
     console.log(chalk.green(`Foi depositado o valor de R$${amount} na sua conta.`))
 }
 
-function getAccount(accountName) {
-    const accountJSON = fs.readFileSync(`accountsDB/${accountName}.json`, {
-        encoding: 'utf8', // padrao br para garantir acentos
-        flag: 'r'
-    })
-
-    return JSON.parse(accountJSON) // account é um string, precisa ser convertido para objeto
-}
 
 // VER SALDO
 
@@ -178,6 +170,70 @@ function getBalance() {
 
 // SACAR
 
+function withdraw() {
+
+    inquirer.prompt([
+        {
+            name: 'accountName',
+            message: 'Qual o nome da conta?'
+        }
+    ])
+    .then((answer) => {
+
+        const accountName = answer['accountName']
+
+        // verificar conta
+        if(!verifyAccount(accountName)){
+            return withdraw()
+        }
+
+        inquirer.prompt([
+            {
+                name: 'amount',
+                message: 'Qual o valor a ser sacado?'
+            }
+        ])
+        .then((answer) => {
+
+            const amount = answer['amount']
+
+            removeAmount(accountName, amount)
+
+        })
+        .catch(err => console.log(err))
+
+    })
+    .catch(err => console.log(err))
+}
+
+function removeAmount(accountName, amount) {
+
+    if(!amount) { // caso o usuario nao envie valor
+        console.log(chalk.bgRed.black("Ocorreu um erro. Tente Novamente."))      
+        return withdraw()
+    }
+
+    const accountData = getAccount(accountName)
+
+    if(accountData.balance < amount) { // se o valor a ser sacado for maior que o valor na conta
+        console.log(chalk.bgRed.black("Valor indisponível."))
+        return withdraw()
+    }
+
+    accountData.balance -= parseFloat(amount)
+
+    fs.writeFileSync( // sobrescrevendo o arquivo
+        `accountsDB/${accountName}.json`,
+        JSON.stringify(accountData), // passando de volta para string para poder retornar ao arquivo
+        function(err) {
+            console.log(err)
+        }
+    )
+    console.log(chalk.green(`Foi realizado um saque de R$${amount} com sucesso!`))
+    
+    operation()
+}
+
 // VERIFICAR SE CONTA EXISTE
 
 function verifyAccount(accountName) {
@@ -187,4 +243,16 @@ function verifyAccount(accountName) {
         return false
     }
     return true
+}
+
+
+// RETORNAR CONTA   
+
+function getAccount(accountName) {
+    const accountJSON = fs.readFileSync(`accountsDB/${accountName}.json`, {
+        encoding: 'utf8', // padrao br para garantir acentos
+        flag: 'r'
+    })
+
+    return JSON.parse(accountJSON) // account é um string, precisa ser convertido para objeto
 }
